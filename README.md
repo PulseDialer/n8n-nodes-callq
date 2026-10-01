@@ -1,10 +1,10 @@
-# Pulse n8n node
+# CallQ (Pulse) n8n node
 
 n8n community node for [Pulse](https://github.com/PulseDialer/Pulse) contacts. Pulse is also called CallQ. Version 0.1 talks to the public API that is live today: contact actions, and a trigger for the `lead.*` webhooks Pulse already sends.
 
 Calendar bookings and email send exist in Pulse behind flags that are off. They are not in this node. Webhook event names stay `lead.*`. A `contact.*` name is not emitted.
 
-This package is not published to npm yet. Install it from this repository until it is.
+The npm package is `n8n-nodes-callq`. The npm name `n8n-nodes-pulse` belongs to an unrelated project.
 
 ## What you need in Pulse
 
@@ -16,12 +16,14 @@ The API key cannot create that webhook subscription. Pulse only allows it from t
 
 ## Install into n8n
 
+In n8n: Settings → Community Nodes → Install → `n8n-nodes-callq`.
+
+For a self-hosted n8n without that screen:
+
 ```bash
-npm install
-npm run build
 mkdir -p ~/.n8n/custom
 cd ~/.n8n/custom
-npm install /absolute/path/to/n8n-nodes-pulse
+npm install n8n-nodes-callq
 ```
 
 Restart n8n. Add the **Pulse API** credential: base URL `https://dialer.timesharehelpcenter.com` unless the CRM is on another host, the `plk_` key, and the `whsec_` secret if you use the trigger.

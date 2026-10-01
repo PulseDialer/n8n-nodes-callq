@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-pulse",
+  "name": "n8n-nodes-callq",
   "version": "0.1.0",
   "description": "n8n node for Pulse CRM contacts and lead.* webhooks. Pulse is also called CallQ.",
   "keywords": [
@@ -8,13 +8,13 @@
     "callq"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/PulseDialer/n8n-nodes-pulse",
+  "homepage": "https://github.com/PulseDialer/n8n-nodes-callq",
   "author": {
     "name": "PulseDialer"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PulseDialer/n8n-nodes-pulse.git"
+    "url": "git+https://github.com/PulseDialer/n8n-nodes-callq.git"
   },
   "main": "index.js",
   "scripts": {

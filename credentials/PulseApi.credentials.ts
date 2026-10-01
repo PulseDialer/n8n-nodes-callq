@@ -8,7 +8,7 @@ import {
 export class PulseApi implements ICredentialType {
 	name = 'pulseApi';
 	displayName = 'Pulse API';
-	documentationUrl = 'https://github.com/PulseDialer/n8n-nodes-pulse';
+	documentationUrl = 'https://github.com/PulseDialer/n8n-nodes-callq';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Base URL',
