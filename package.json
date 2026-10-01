@@ -1,0 +1,46 @@
+{
+  "name": "n8n-nodes-pulse",
+  "version": "0.1.0",
+  "description": "n8n node for Pulse CRM contacts and lead.* webhooks. Pulse is also called CallQ.",
+  "keywords": [
+    "n8n-community-node-package",
+    "pulse",
+    "callq"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/PulseDialer/n8n-nodes-pulse",
+  "author": {
+    "name": "PulseDialer"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PulseDialer/n8n-nodes-pulse.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && cp nodes/Pulse/pulse.svg dist/nodes/Pulse/pulse.svg",
+    "test": "node --test nodes/Pulse/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/PulseApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Pulse/Pulse.node.js",
+      "dist/nodes/Pulse/PulseTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "22.19.0",
+    "n8n-workflow": "2.16.0",
+    "typescript": "5.9.2"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
