@@ -1,5 +1,6 @@
 import {
 	IAuthenticateGeneric,
+	Icon,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -8,6 +9,7 @@ import {
 export class PulseApi implements ICredentialType {
 	name = 'pulseApi';
 	displayName = 'Pulse API';
+	icon: Icon = { light: 'file:../nodes/Pulse/pulse.svg', dark: 'file:../nodes/Pulse/pulse.dark.svg' };
 	documentationUrl = 'https://github.com/PulseDialer/n8n-nodes-callq';
 	properties: INodeProperties[] = [
 		{

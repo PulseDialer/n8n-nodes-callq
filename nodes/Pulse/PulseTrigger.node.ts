@@ -5,6 +5,7 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { verifyPulseSignature } from './verifySignature';
 
@@ -22,14 +23,14 @@ export class PulseTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pulse Trigger',
 		name: 'pulseTrigger',
-		icon: 'file:pulse.svg',
+		icon: { light: 'file:pulse.svg', dark: 'file:pulse.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["events"].join(", ")}}',
 		description: 'Starts when Pulse sends a contact webhook',
 		defaults: { name: 'Pulse Trigger' },
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'pulseApi', required: true }],
 		webhooks: [
 			{

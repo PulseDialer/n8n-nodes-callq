@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildContactCall } from './contactRequest.ts';
+import { buildContactCall, isContactProblem } from './contactRequest.ts';
+
+function callOf(operation: Parameters<typeof buildContactCall>[0], fields: Parameters<typeof buildContactCall>[1]) {
+	const built = buildContactCall(operation, fields);
+	if (isContactProblem(built)) throw new Error(built.problem);
+	return built;
+}
 
 describe('buildContactCall', () => {
 	it('upserts with only the fields that were filled in, and sends the idempotency key', () => {
-		const call = buildContactCall('upsert', {
+		const call = callOf('upsert', {
 			firstName: 'Ada',
 			email: ' ada@example.com ',
 			phone: '',
@@ -22,29 +28,34 @@ describe('buildContactCall', () => {
 	});
 
 	it('omits the idempotency header when the key is blank', () => {
-		const call = buildContactCall('create', { firstName: 'Ada', idempotencyKey: '  ' });
+		const call = callOf('create', { firstName: 'Ada', idempotencyKey: '  ' });
 		assert.equal(call.path, '/contacts');
 		assert.equal(call.headers, undefined);
 	});
 
 	it('rejects custom fields that are not a JSON object', () => {
-		assert.throws(() => buildContactCall('create', { fieldData: '[' }), /JSON object/);
-		assert.throws(() => buildContactCall('create', { fieldData: '[]' }), /JSON object/);
+		for (const raw of ['[', '[]']) {
+			const built = buildContactCall('create', { fieldData: raw });
+			assert.equal(isContactProblem(built), true);
+			if (isContactProblem(built)) assert.match(built.problem, /JSON object/);
+		}
 	});
 
 	it('lists with exact phone and email filters and drops an empty search', () => {
-		const call = buildContactCall('getAll', { query: '  ', filterPhone: '555', filterEmail: 'a@b.c', limit: 10, offset: 0 });
+		const call = callOf('getAll', { query: '  ', filterPhone: '555', filterEmail: 'a@b.c', limit: 10, offset: 0 });
 		assert.deepEqual(call.qs, { phone: '555', email: 'a@b.c', limit: 10 });
 	});
 
 	it('updates and reads one contact by id, and refuses a missing id', () => {
-		assert.equal(buildContactCall('update', { contactId: 'abc', leadStatus: 'Working' }).path, '/contacts/abc');
-		assert.equal(buildContactCall('getScore', { contactId: 'abc' }).path, '/contacts/abc/score');
-		assert.equal(buildContactCall('delete', { contactId: 'a/b' }).path, '/contacts/a%2Fb');
-		assert.throws(() => buildContactCall('get', {}), /Contact ID is required/);
+		assert.equal(callOf('update', { contactId: 'abc', leadStatus: 'Working' }).path, '/contacts/abc');
+		assert.equal(callOf('getScore', { contactId: 'abc' }).path, '/contacts/abc/score');
+		assert.equal(callOf('delete', { contactId: 'a/b' }).path, '/contacts/a%2Fb');
+		const missing = buildContactCall('get', {});
+		assert.equal(isContactProblem(missing), true);
+		if (isContactProblem(missing)) assert.match(missing.problem, /Contact ID is required/);
 	});
 
 	it('loads the field list with no body', () => {
-		assert.deepEqual(buildContactCall('getFields', {}), { method: 'GET', path: '/contacts/fields' });
+		assert.deepEqual(callOf('getFields', {}), { method: 'GET', path: '/contacts/fields' });
 	});
 });

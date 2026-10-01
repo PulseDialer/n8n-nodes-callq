@@ -4,16 +4,17 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { buildContactCall, ContactFields, ContactOperation } from './contactRequest';
+import { buildContactCall, ContactFields, ContactOperation, isContactProblem } from './contactRequest';
 
 const FIELD_PROPERTIES = [
 	{ displayName: 'First Name', name: 'firstName', type: 'string' as const, default: '' },
 	{ displayName: 'Last Name', name: 'lastName', type: 'string' as const, default: '' },
 	{ displayName: 'Email', name: 'email', type: 'string' as const, default: '', placeholder: 'name@example.com' },
 	{ displayName: 'Phone', name: 'phone', type: 'string' as const, default: '' },
-	{ displayName: 'Status', name: 'leadStatus', type: 'string' as const, default: '', description: 'A stage name from the contacts pipeline. The stage id is the name.' },
+	{ displayName: 'Status', name: 'leadStatus', type: 'string' as const, default: '', description: 'A stage name from the contacts pipeline. The stage ID is the name.' },
 	{ displayName: 'Source', name: 'leadSource', type: 'string' as const, default: '' },
 	{
 		displayName: 'Custom Fields',
@@ -28,16 +29,25 @@ export class Pulse implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pulse',
 		name: 'pulse',
-		icon: 'file:pulse.svg',
+		icon: { light: 'file:pulse.svg', dark: 'file:pulse.dark.svg' },
 		group: ['transform'],
 		version: 1,
+		usableAsTool: true,
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Look up, create, and update Pulse contacts',
 		defaults: { name: 'Pulse' },
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'pulseApi', required: true }],
 		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [{ name: 'Contact', value: 'contact' }],
+				default: 'contact',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -45,7 +55,7 @@ export class Pulse implements INodeType {
 				noDataExpression: true,
 				options: [
 					{ name: 'Create', value: 'create', action: 'Create a contact' },
-					{ name: 'Create or Update', value: 'upsert', action: 'Create or update a contact', description: 'Match on phone or email, then update the existing contact or create one' },
+					{ name: 'Create or Update', value: 'upsert', action: 'Create or update a contact', description: 'Create a new record, or update the current one if it already exists (upsert)' },
 					{ name: 'Delete', value: 'delete', action: 'Delete a contact' },
 					{ name: 'Get', value: 'get', action: 'Get a contact' },
 					{ name: 'Get Many', value: 'getAll', action: 'List contacts' },
@@ -81,7 +91,7 @@ export class Pulse implements INodeType {
 				type: 'string',
 				default: '',
 				displayOptions: { show: { operation: ['getAll'] } },
-				description: 'Matches name, email, or phone.',
+				description: 'Matches name, email, or phone',
 			},
 			{
 				displayName: 'Phone',
@@ -89,7 +99,7 @@ export class Pulse implements INodeType {
 				type: 'string',
 				default: '',
 				displayOptions: { show: { operation: ['getAll'] } },
-				description: 'Exact phone match, compared as digits.',
+				description: 'Exact phone match, compared as digits',
 			},
 			{
 				displayName: 'Email',
@@ -97,12 +107,13 @@ export class Pulse implements INodeType {
 				type: 'string',
 				default: '',
 				displayOptions: { show: { operation: ['getAll'] } },
-				description: 'Exact email match, ignoring case.',
+				description: 'Exact email match, ignoring case',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				description: 'Max number of results to return',
 				typeOptions: { minValue: 1, maxValue: 200 },
 				default: 50,
 				displayOptions: { show: { operation: ['getAll'] } },
@@ -129,7 +140,9 @@ export class Pulse implements INodeType {
 			try {
 				const operation = this.getNodeParameter('operation', i) as ContactOperation;
 				const fields = readFields(this, operation, i);
-				const call = buildContactCall(operation, fields);
+				const built = buildContactCall(operation, fields);
+				if (isContactProblem(built)) throw new NodeOperationError(this.getNode(), built.problem);
+				const call = built;
 				const response: unknown = await this.helpers.httpRequestWithAuthentication.call(this, 'pulseApi', {
 					method: call.method,
 					url: `${baseUrl}/api/v1/public${call.path}`,

@@ -36,12 +36,22 @@ export interface ContactCall {
 	headers?: Record<string, string>;
 }
 
+export interface ContactProblem {
+	problem: string;
+}
+
+export function isContactProblem(
+	value: ContactCall | ContactProblem | string | Record<string, unknown>,
+): value is ContactProblem {
+	return typeof value === 'object' && value !== null && 'problem' in value && !('method' in value);
+}
+
 function text(value: string | undefined): string | undefined {
 	const trimmed = value?.trim();
 	return trimmed ? trimmed : undefined;
 }
 
-function writableBody(fields: ContactFields): Record<string, unknown> {
+function writableBody(fields: ContactFields): Record<string, unknown> | ContactProblem {
 	const body: Record<string, unknown> = {};
 	const first = text(fields.firstName);
 	const last = text(fields.lastName);
@@ -61,10 +71,10 @@ function writableBody(fields: ContactFields): Record<string, unknown> {
 		try {
 			parsed = JSON.parse(raw);
 		} catch {
-			throw new Error('Custom fields must be a JSON object');
+			return { problem: 'Custom fields must be a JSON object' };
 		}
 		if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-			throw new Error('Custom fields must be a JSON object');
+			return { problem: 'Custom fields must be a JSON object' };
 		}
 		body.field_data = parsed;
 	}
@@ -76,20 +86,20 @@ function idempotency(fields: ContactFields): Record<string, string> | undefined 
 	return key ? { 'Idempotency-Key': key } : undefined;
 }
 
-export function buildContactCall(operation: ContactOperation, fields: ContactFields): ContactCall {
+export function buildContactCall(operation: ContactOperation, fields: ContactFields): ContactCall | ContactProblem {
 	switch (operation) {
 		case 'create':
-			return { method: 'POST', path: '/contacts', body: writableBody(fields), headers: idempotency(fields) };
+			return withBody('POST', '/contacts', fields, true);
 		case 'upsert':
-			return { method: 'POST', path: '/contacts/upsert', body: writableBody(fields), headers: idempotency(fields) };
+			return withBody('POST', '/contacts/upsert', fields, true);
 		case 'get':
-			return { method: 'GET', path: `/contacts/${requiredId(fields)}` };
+			return withId('GET', fields, (id) => `/contacts/${id}`);
 		case 'update':
-			return { method: 'PATCH', path: `/contacts/${requiredId(fields)}`, body: writableBody(fields) };
+			return withBody('PATCH', '', fields, false, (id) => `/contacts/${id}`);
 		case 'delete':
-			return { method: 'DELETE', path: `/contacts/${requiredId(fields)}` };
+			return withId('DELETE', fields, (id) => `/contacts/${id}`);
 		case 'getScore':
-			return { method: 'GET', path: `/contacts/${requiredId(fields)}/score` };
+			return withId('GET', fields, (id) => `/contacts/${id}/score`);
 		case 'getFields':
 			return { method: 'GET', path: '/contacts/fields' };
 		case 'getAll': {
@@ -106,13 +116,42 @@ export function buildContactCall(operation: ContactOperation, fields: ContactFie
 		}
 		default: {
 			const neverOp: never = operation;
-			throw new Error(`Unknown contact operation: ${String(neverOp)}`);
+			return { problem: `Unknown contact operation: ${String(neverOp)}` };
 		}
 	}
 }
 
-function requiredId(fields: ContactFields): string {
+function withBody(
+	method: 'POST' | 'PATCH',
+	path: string,
+	fields: ContactFields,
+	sendKey: boolean,
+	pathFor?: (id: string) => string,
+): ContactCall | ContactProblem {
+	const id = pathFor ? requiredId(fields) : undefined;
+	if (id && isContactProblem(id)) return id;
+	const body = writableBody(fields);
+	if (isContactProblem(body)) return body;
+	return {
+		method,
+		path: id ? pathFor!(id) : path,
+		body,
+		headers: sendKey ? idempotency(fields) : undefined,
+	};
+}
+
+function withId(
+	method: 'GET' | 'DELETE',
+	fields: ContactFields,
+	pathFor: (id: string) => string,
+): ContactCall | ContactProblem {
+	const id = requiredId(fields);
+	if (isContactProblem(id)) return id;
+	return { method, path: pathFor(id) };
+}
+
+function requiredId(fields: ContactFields): string | ContactProblem {
 	const id = text(fields.contactId);
-	if (!id) throw new Error('Contact ID is required');
+	if (!id) return { problem: 'Contact ID is required' };
 	return encodeURIComponent(id);
 }
